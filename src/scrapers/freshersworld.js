@@ -16,6 +16,17 @@ const HEADERS = {
   'Referer': 'https://www.freshersworld.com/',
 };
 
+/**
+ * Strip "Less More\nLess" UI artifacts injected by Freshersworld's
+ * show-more toggle button into the scraped text content.
+ */
+function cleanTitle(raw) {
+  return (raw || '')
+    .replace(/Less\s+More[\s\S]*?Less/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function scrape() {
   const allJobs = [];
   const seen = new Set();
@@ -35,7 +46,7 @@ async function scrape() {
 
         cards.each((_, el) => {
           const card = $(el);
-          const title = card.find('h3, h2, .job-title, [class*="title"]').first().text().trim();
+          const title = cleanTitle(card.find('h3, h2, .job-title, [class*="title"]').first().text());
           const company = card.find('.company, [class*="company"], .org-name').first().text().trim();
           const location = card.find('.location, [class*="location"], .city').first().text().trim() || 'India';
           const linkEl = card.find('a[href*="/jobs/"], a[href*="/job/"]').first();
