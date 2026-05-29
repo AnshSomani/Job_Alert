@@ -3,27 +3,48 @@
 const Parser = require('rss-parser');
 const parser = new Parser({ timeout: 15000 });
 
-const HN_JOBS_RSS = 'https://news.ycombinator.com/jobs.rss';
+// FIX: news.ycombinator.com/jobs.rss returns 404.
+// hnrss.org is a community-maintained stable RSS service for HN.
+// /whoishiring/jobs fetches top-level job posts from the monthly
+// "Ask HN: Who is hiring?" threads — verified live May 2026.
+const HN_JOBS_RSS = 'https://hnrss.org/whoishiring/jobs';
 
 const CS_KEYWORDS = [
   'engineer', 'developer', 'software', 'backend', 'frontend', 'fullstack',
-  'data', 'ml', 'machine learning', 'ai', 'devops', 'sre', 'platform',
-  'infrastructure', 'security', 'mobile', 'ios', 'android', 'cloud',
-  'python', 'javascript', 'typescript', 'golang', 'rust',
+  'full stack', 'data', 'ml', 'machine learning', 'ai', 'devops', 'sre',
+  'platform', 'infrastructure', 'security', 'mobile', 'ios', 'android',
+  'cloud', 'python', 'javascript', 'typescript', 'golang', 'rust',
 ];
 
 function extractDetails(item) {
   const content = (item.contentSnippet || item.content || '').toLowerCase();
   const title = (item.title || '').toLowerCase();
-
-  const isRemote = content.includes('remote') || title.includes('remote');
+  const isRemote = content.includes('remote') || title.includes('remote')
+    || content.includes('work from home') || content.includes('wfh');
   const isIntern = content.includes('intern') || title.includes('intern');
-
   return { isRemote, isIntern };
 }
 
+/**
+ * Parse company name and role from hnrss.org item.
+ * hnrss format: 'New comment by user in "Ask HN: Who is hiring? (May 2026)"'
+ * The actual job text is in contentSnippet.
+ * We extract company from first line of description (format: "Company | Role | Location").
+ */
+function parseHNPost(item) {
+  const snippet = item.contentSnippet || item.content || '';
+  // Most HN job posts start with "Company | Role | Location | ..."
+  const firstLine = snippet.split('\n')[0].trim();
+  const parts = firstLine.split(/\s*[\|–—]\s*/);
+
+  const company = parts[0]?.trim() || 'HN Company';
+  const role = parts[1]?.trim() || firstLine || 'Engineering Role';
+
+  return { company, role };
+}
+
 async function scrape() {
-  console.log('[YCombinator] Fetching HN Jobs RSS...');
+  console.log('[YCombinator] Fetching HN Who is Hiring RSS (hnrss.org)...');
   try {
     const result = await parser.parseURL(HN_JOBS_RSS);
     const items = result.items || [];
@@ -36,10 +57,7 @@ async function scrape() {
       })
       .map(item => {
         const { isRemote, isIntern } = extractDetails(item);
-        // HN job posts usually follow format: "Company (YC SXXX) – Hiring ROLE (Remote)"
-        const titleParts = (item.title || '').split('–');
-        const company = titleParts[0]?.trim() || 'YC Company';
-        const role = titleParts[1]?.trim() || item.title || 'Engineering Role';
+        const { company, role } = parseHNPost(item);
 
         return {
           title: role,
@@ -62,3 +80,4 @@ async function scrape() {
 }
 
 module.exports = { scrape };
+

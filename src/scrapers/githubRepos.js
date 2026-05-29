@@ -5,6 +5,9 @@ const axios = require('axios');
 // Community-maintained GitHub repos with job tables in README.
 // These repos are updated frequently by the community and contain
 // high-signal new-grad and internship listings.
+// FIX: Both repos use the 'dev' branch (not 'main') as their primary branch.
+// Repo name is 'Summer2026-Internships' (no hyphen between Summer and 2026).
+// URLs verified live on 2026-05-29.
 const REPOS = [
   {
     name: 'SimplifyJobs/New-Grad-Positions',
@@ -13,16 +16,10 @@ const REPOS = [
     label: 'New Grad 2025/2026',
   },
   {
-    name: 'SimplifyJobs/Summer-2026-Internships',
-    rawUrl: 'https://raw.githubusercontent.com/SimplifyJobs/Summer-2026-Internships/dev/.github/README.md',
+    name: 'SimplifyJobs/Summer2026-Internships',
+    rawUrl: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md',
     type: 'internship',
-    label: 'Summer 2026 Intern (dev branch)',
-  },
-  {
-    name: 'SimplifyJobs/Summer-2026-Internships (main)',
-    rawUrl: 'https://raw.githubusercontent.com/SimplifyJobs/Summer-2026-Internships/main/README.md',
-    type: 'internship',
-    label: 'Summer 2026 Intern (main branch)',
+    label: 'Summer 2026 Internships',
   },
 ];
 
