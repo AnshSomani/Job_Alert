@@ -1,0 +1,150 @@
+'use strict';
+
+require('dotenv').config();
+
+const { runAllScrapers } = require('./scrapers/index');
+const { filterJobs } = require('./core/filter');
+const { passesGeoFilter, isIndia } = require('./core/geoFilter');
+const Database = require('./core/database');
+const TelegramNotifier = require('./notifiers/telegram');
+const DiscordNotifier = require('./notifiers/discord');
+
+// ─── Config ────────────────────────────────────────────────────────────────
+const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
+const USE_SERPAPI = process.env.USE_SERPAPI === 'true';
+const DRY_RUN = process.env.DRY_RUN === 'true' || process.argv.includes('--dry-run');
+
+// FIX Issue 10: Raised from 30 → 50. At 1.5s/message it takes ~75s to send
+// 50 Telegram messages — well within GitHub Actions 15-min timeout.
+const MAX_JOBS_PER_RUN = 50;
+
+function validateConfig() {
+  const missing = [];
+  if (!TELEGRAM_TOKEN) missing.push('TELEGRAM_BOT_TOKEN');
+  if (!TELEGRAM_CHAT_ID) missing.push('TELEGRAM_CHAT_ID');
+  if (!DISCORD_WEBHOOK) missing.push('DISCORD_WEBHOOK_URL');
+  if (missing.length > 0) {
+    console.error('❌ Missing required environment variables:', missing.join(', '));
+    console.error('   Copy .env.example to .env and fill in your values.');
+    process.exit(1);
+  }
+}
+
+/**
+ * Sort jobs: India first → remote → global; within each group internships first
+ */
+function sortJobs(jobs) {
+  return jobs.sort((a, b) => {
+    const geoScore = j => {
+      const loc = (j.location || '').toLowerCase();
+      if (isIndia(loc)) return 0;
+      if (loc.includes('remote') || loc.includes('wfh')) return 1;
+      return 2;
+    };
+    const geo = geoScore(a) - geoScore(b);
+    if (geo !== 0) return geo;
+    // Same geo — internships before full-time
+    return (a.type === 'internship' ? 0 : 1) - (b.type === 'internship' ? 0 : 1);
+  });
+}
+
+async function main() {
+  console.log('\n' + '═'.repeat(60));
+  console.log('  🤖 JOB ALERT BOT — Starting Run');
+  console.log(`  Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`);
+  console.log(`  Mode: ${USE_SERPAPI ? 'FULL (SerpAPI enabled)' : 'FREE sources only'}`);
+  console.log(`  Dry Run: ${DRY_RUN ? 'YES (no messages sent)' : 'NO'}`);
+  console.log('═'.repeat(60) + '\n');
+
+  validateConfig();
+
+  // ── 1. Scrape ─────────────────────────────────────────────────────────────
+  const rawJobs = await runAllScrapers({ useSerpapi: USE_SERPAPI });
+
+  // ── 2. Filter by CS relevance ────────────────────────────────────────────
+  const csJobs = filterJobs(rawJobs);
+  console.log(`📋 After CS filter: ${csJobs.length} relevant jobs`);
+
+  // ── 3. Filter by geography ──────────────────────────────────────────────
+  const geoJobs = csJobs.filter(passesGeoFilter);
+  console.log(`🌍 After geo filter: ${geoJobs.length} jobs`);
+
+  // ── 4. Deduplicate against DB ────────────────────────────────────────────
+  const db = new Database();
+  db.cleanup();
+
+  const newJobs = geoJobs.filter(job => db.isNew(job));
+  console.log(`✨ New (not previously seen): ${newJobs.length} jobs`);
+
+  // FIX Issue 5: If nothing new, exit silently — no "nothing happened" ping
+  if (newJobs.length === 0) {
+    console.log('✅ No new jobs found. Staying silent (silence is golden).');
+    db.save();
+    return;
+  }
+
+  // ── 5. Sort and cap ───────────────────────────────────────────────────────
+  const sorted = sortJobs(newJobs);
+  const toNotify = sorted.slice(0, MAX_JOBS_PER_RUN);
+  const deferred = newJobs.length - toNotify.length;
+
+  if (deferred > 0) {
+    console.log(`⚠️  Capping at ${MAX_JOBS_PER_RUN} this run. ${deferred} deferred — will be sent next run.`);
+  }
+
+  // ── 6. Send notifications ─────────────────────────────────────────────────
+  const runType = USE_SERPAPI ? '☀️ Morning Run (Full)' : '🌙 Evening Run (Free)';
+
+  if (!DRY_RUN) {
+    const telegram = new TelegramNotifier(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID);
+    const discord = new DiscordNotifier(DISCORD_WEBHOOK);
+
+    const results = await Promise.allSettled([
+      telegram.sendJobs(toNotify, runType),
+      discord.sendJobs(toNotify, runType),
+    ]);
+
+    // FIX Issue 7: Only mark jobs as seen if at least one notifier succeeded.
+    // If both fail, we exit with error — GitHub Actions will show the run as
+    // failed and jobs will be retried next run.
+    const anySucceeded = results.some(r => r.status === 'fulfilled');
+    const failures = results.filter(r => r.status === 'rejected').map(r => r.reason?.message);
+    if (failures.length > 0) {
+      console.warn(`⚠️  Some notifiers failed: ${failures.join(', ')}`);
+    }
+
+    if (!anySucceeded) {
+      console.error('💥 All notifiers failed — NOT marking jobs as seen. Will retry next run.');
+      process.exit(1); // Non-zero exit → GitHub Actions marks run as failed
+    }
+
+  } else {
+    console.log('\n[DRY RUN] Would send these jobs:');
+    toNotify.forEach((j, i) => {
+      console.log(`  ${i + 1}. [${j.type}] ${j.title} @ ${j.company} | ${j.location || 'no location'} | ${j.source}`);
+    });
+    console.log(`[DRY RUN] Total: ${toNotify.length} jobs\n`);
+  }
+
+  // ── 7. Mark jobs as seen (only reached if at least one notifier succeeded) ─
+  for (const job of toNotify) {
+    db.markSeen(job);
+  }
+  db.save();
+
+  // ── 8. Final summary ────────────────────────────────────────────────────
+  const stats = db.stats();
+  console.log('\n' + '═'.repeat(60));
+  console.log('  ✅ Run Complete!');
+  console.log(`  Notified this run : ${toNotify.length}`);
+  console.log(`  Deferred to next  : ${deferred}`);
+  console.log(`  Total DB entries  : ${stats.total}`);
+  console.log('═'.repeat(60) + '\n');
+}
+
+main().catch(err => {
+  console.error('\n💥 Fatal error in main():', err);
+  process.exit(1);
+});

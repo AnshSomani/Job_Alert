@@ -1,0 +1,26 @@
+{
+  "name": "job-alert-bot",
+  "version": "1.0.0",
+  "description": "Automated CS job alert bot — scrapes 10 platforms, notifies via Telegram + Discord",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "start:all": "cross-env USE_SERPAPI=true node src/main.js",
+    "start:free": "node src/main.js",
+    "test": "node src/main.js --dry-run"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0",
+    "rss-parser": "^3.13.0",
+    "node-telegram-bot-api": "^0.64.0",
+    "serpapi": "^2.1.0",
+    "dotenv": "^16.4.5",
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "IIIT Kota CS 2023-27",
+  "license": "MIT"
+}
