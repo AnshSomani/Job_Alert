@@ -16,11 +16,22 @@ const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 const USE_SERPAPI = process.env.USE_SERPAPI === 'true';
 const DRY_RUN = process.env.DRY_RUN === 'true' || process.argv.includes('--dry-run');
 
+// SEED_MODE: On first deploy, run with SEED_MODE=true.
+// This scrapes all current job listings, marks them ALL as "already seen"
+// in the deduplication DB, but sends ZERO notifications.
+// Purpose: prevents flooding Telegram/Discord with hundreds of old job posts
+// that existed before the bot was set up.
+// After the seed run completes, set SEED_MODE=false (or remove it) for all
+// subsequent scheduled runs — only genuinely NEW jobs will be sent.
+const SEED_MODE = process.env.SEED_MODE === 'true' || process.argv.includes('--seed');
+
 // FIX Issue 10: Raised from 30 → 50. At 1.5s/message it takes ~75s to send
 // 50 Telegram messages — well within GitHub Actions 15-min timeout.
 const MAX_JOBS_PER_RUN = 50;
 
 function validateConfig() {
+  // In SEED_MODE we never send notifications, so credentials aren't required.
+  if (SEED_MODE || DRY_RUN) return;
   const missing = [];
   if (!TELEGRAM_TOKEN) missing.push('TELEGRAM_BOT_TOKEN');
   if (!TELEGRAM_CHAT_ID) missing.push('TELEGRAM_CHAT_ID');
@@ -56,6 +67,10 @@ async function main() {
   console.log(`  Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`);
   console.log(`  Mode: ${USE_SERPAPI ? 'FULL (SerpAPI enabled)' : 'FREE sources only'}`);
   console.log(`  Dry Run: ${DRY_RUN ? 'YES (no messages sent)' : 'NO'}`);
+  if (SEED_MODE) {
+    console.log('  🌱 SEED MODE: Cataloguing all existing jobs — NO notifications will be sent.');
+    console.log('  After this run, set SEED_MODE=false in your workflow for live alerts.');
+  }
   console.log('═'.repeat(60) + '\n');
 
   validateConfig();
@@ -82,6 +97,24 @@ async function main() {
   if (newJobs.length === 0) {
     console.log('✅ No new jobs found. Staying silent (silence is golden).');
     db.save();
+    return;
+  }
+
+  // ── SEED MODE: mark everything as seen, send nothing ────────────────────
+  if (SEED_MODE) {
+    console.log(`\n🌱 [SEED MODE] Cataloguing ${newJobs.length} jobs as already seen...`);
+    for (const job of newJobs) {
+      db.markSeen(job);
+    }
+    db.save();
+    const stats = db.stats();
+    console.log('\n' + '═'.repeat(60));
+    console.log('  🌱 Seed Run Complete!');
+    console.log(`  Jobs catalogued (will NOT be sent) : ${newJobs.length}`);
+    console.log(`  Total DB entries                   : ${stats.total}`);
+    console.log('  Next step: set SEED_MODE=false in your workflow');
+    console.log('  From next run, only NEW jobs will trigger alerts.');
+    console.log('═'.repeat(60) + '\n');
     return;
   }
 
