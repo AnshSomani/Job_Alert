@@ -1,13 +1,10 @@
 'use strict';
 
 const axios = require('axios');
+const cheerio = require('cheerio');
 
-// Community-maintained GitHub repos with job tables in README.
-// These repos are updated frequently by the community and contain
-// high-signal new-grad and internship listings.
-// FIX: Both repos use the 'dev' branch (not 'main') as their primary branch.
-// Repo name is 'Summer2026-Internships' (no hyphen between Summer and 2026).
-// URLs verified live on 2026-05-29.
+// SimplifyJobs repos — both use the 'dev' branch as primary.
+// URLs verified live 2026-05-29.
 const REPOS = [
   {
     name: 'SimplifyJobs/New-Grad-Positions',
@@ -23,18 +20,89 @@ const REPOS = [
   },
 ];
 
-// FIX Issue 12: Removed dead constant SIMPLIFY_BASE — it was declared but
-// never used anywhere in this file.
+/**
+ * Parse SimplifyJobs HTML table format (used since 2026 restructure).
+ * Format: <table><thead><tr><th>Company</th><th>Role</th><th>Location</th>...
+ * Each data row: <tr><td>company link</td><td>role</td><td>location</td><td>apply buttons</td>...
+ */
+function parseHTMLTable(html, repoType) {
+  const $ = cheerio.load(html);
+  const jobs = [];
+
+  $('table').each((_, table) => {
+    const headers = [];
+    $(table).find('thead th').each((_, th) => {
+      headers.push($(th).text().trim().toLowerCase());
+    });
+
+    // Only process tables that look like job tables
+    if (!headers.some(h => /company|role|position/i.test(h))) return;
+
+    const companyIdx = headers.findIndex(h => /company/i.test(h));
+    const roleIdx    = headers.findIndex(h => /role|position|title/i.test(h));
+    const locIdx     = headers.findIndex(h => /location/i.test(h));
+    const applyIdx   = headers.findIndex(h => /application|apply|link/i.test(h));
+
+    $(table).find('tbody tr').each((_, row) => {
+      const cells = $(row).find('td');
+      if (cells.length < 2) return;
+
+      const companyCell = cells.eq(companyIdx >= 0 ? companyIdx : 0);
+      const roleCell    = cells.eq(roleIdx    >= 0 ? roleIdx    : 1);
+      const locCell     = cells.eq(locIdx     >= 0 ? locIdx     : 2);
+      const applyCell   = cells.eq(applyIdx   >= 0 ? applyIdx   : 3);
+
+      // Company: strip emoji (🔥, ↳), strong, links
+      const companyRaw = companyCell.text().replace(/🔥|↳|🎓|🛂|🇺🇸/g, '').trim();
+      // ↳ rows are sub-roles of the previous company — skip them
+      if (companyCell.text().trim().startsWith('↳')) return;
+
+      const company = companyRaw || 'Unknown Company';
+      const role    = roleCell.text().replace(/🎓|🛂|🇺🇸/g, '').trim();
+      // Location cells sometimes use <br> for multiple cities — join with comma
+      const location = locCell.text().replace(/\n/g, ', ').trim() || 'USA / Global';
+
+      // Extract apply URL — prefer direct apply link (first <a> with href not simplify.jobs)
+      let url = '';
+      applyCell.find('a[href]').each((_, a) => {
+        const href = $(a).attr('href') || '';
+        if (!url && href && !href.includes('simplify.jobs/p/')) {
+          url = href;
+        }
+      });
+      // Fallback: any link in the whole row
+      if (!url) {
+        $(row).find('a[href]').each((_, a) => {
+          const href = $(a).attr('href') || '';
+          if (!url && href.startsWith('http')) url = href;
+        });
+      }
+
+      // Skip closed roles (🔒 in company or role text)
+      if (companyCell.html()?.includes('🔒') || roleCell.html()?.includes('🔒')) return;
+
+      if (role && company) {
+        jobs.push({
+          title: role,
+          company,
+          location,
+          url: url || 'https://github.com/SimplifyJobs',
+          type: repoType,
+          source: 'GitHub Repos',
+        });
+      }
+    });
+  });
+
+  return jobs;
+}
 
 /**
- * Parse a markdown table row like:
- * | Company | Role | Location | Apply | Date |
- * Returns array of job objects
+ * Legacy markdown table parser — kept as fallback.
  */
 function parseMarkdownTable(markdown, repoType) {
   const jobs = [];
   const lines = markdown.split('\n');
-
   let inTable = false;
   let headers = [];
 
@@ -122,10 +190,15 @@ async function scrape() {
   const seen = new Set();
 
   for (const repo of REPOS) {
-    const markdown = await fetchRepo(repo);
-    if (!markdown) continue;
+    const content = await fetchRepo(repo);
+    if (!content) continue;
 
-    const jobs = parseMarkdownTable(markdown, repo.type);
+    // Try HTML table parser first (SimplifyJobs switched from markdown to HTML in 2026)
+    let jobs = parseHTMLTable(content, repo.type);
+    if (jobs.length === 0) {
+      // Fallback: legacy markdown pipe-table format
+      jobs = parseMarkdownTable(content, repo.type);
+    }
     console.log(`[GitHubRepos] ${repo.label}: ${jobs.length} jobs parsed`);
 
     for (const job of jobs) {
@@ -144,3 +217,4 @@ async function scrape() {
 }
 
 module.exports = { scrape };
+
