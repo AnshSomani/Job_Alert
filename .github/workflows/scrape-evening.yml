@@ -1,11 +1,7 @@
 name: 🌙 Evening Scrape (Free Sources Only)
 
 on:
-  schedule:
-    # 3:38 PM UTC = 9:08 PM IST every day
-    # Deliberately off-peak — GitHub's scheduler is heavily congested at exact :00 and :30 marks
-    - cron: '38 15 * * *'
-  workflow_dispatch:
+  workflow_dispatch:  # Triggered externally by cron-job.org at 9:00 PM IST (3:30 PM UTC) daily
 
 # FIX Issue 1: Removed 'contents: write' — using Actions Cache now, not git commits.
 permissions:
