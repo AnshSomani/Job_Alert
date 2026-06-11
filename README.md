@@ -1,18 +1,18 @@
-# 🤖 Job Alert Bot — CS Job Hunter
+# Job Alert Bot — CS Job Hunter
 
 > Automatically scrapes **8 major job platforms** twice daily and delivers fresh computer science job & internship alerts directly to **Telegram** and **Discord**. Built on a serverless, database-free architecture hosted 100% free on GitHub Actions.
 
 ---
 
-## 📱 Live Demo / Alert Previews
+## Live Demo / Alert Previews
 
-| 💬 Telegram Alert Channel | 🎮 Discord Alert Channel |
+| Telegram Alert Channel | Discord Alert Channel |
 |---|---|
 | ![Telegram Alert](Images/Screenshot%202026-06-11%20123138.png) | ![Discord Alert](Images/Screenshot%202026-06-11%20123216.png) |
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Details |
 |---|---|
@@ -26,16 +26,16 @@
 
 ---
 
-## ⏰ Schedule
+## Schedule
 
 | Run | Time (IST) | SerpAPI? | Sources Scraped |
 |---|---|---|---|
-| 🌅 **Morning Scrape** | **9:00 AM** | Yes (8 custom queries) | All 8 scrapers |
-| 🌙 **Evening Scrape** | **9:00 PM** | No | 7 free scrapers |
+| **Morning Scrape** | **9:00 AM** | Yes (8 custom queries) | All 8 scrapers |
+| **Evening Scrape** | **9:00 PM** | No | 7 free scrapers |
 
 ---
 
-## 🛠️ Setup (5 minutes)
+## Setup (5 minutes)
 
 ### Step 1 — Fork/Clone this repository
 
@@ -51,7 +51,7 @@ Go to your fork's **Settings → Secrets and variables → Actions → New repos
 
 ### Step 3 — Run the Seed Workflow Once
 1. Go to the **Actions** tab of your repository.
-2. Select **🌱 Seed Run (First-Time Setup — Run Once)**.
+2. Select **Seed Run (First-Time Setup — Run Once)**.
 3. Click **Run workflow** to catalogue all current listings. This seeds the deduplication database and sends **zero notifications**.
 
 ### Step 4 — Set Up Time-Precise Scheduling
@@ -66,7 +66,7 @@ Because GitHub Actions built-in schedules can be delayed by hours, we trigger th
 
 ---
 
-## 💻 Local Development & Testing
+## Local Development & Testing
 
 ```bash
 # Clone the repository
@@ -89,7 +89,7 @@ npm start
 
 ---
 
-## 📁 Project Directory Structure
+## Project Directory Structure
 
 ```text
 Job_Alert/
@@ -111,7 +111,7 @@ Job_Alert/
 
 ---
 
-## ⚙️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -124,7 +124,7 @@ graph TD
 
 ---
 
-## 📋 Scraper Matching & Geographic Rules
+## Scraper Matching & Geographic Rules
 
 * **India** (all cities, Remote, and Work From Home) $\rightarrow$ Always included.
 * **Global Remote** $\rightarrow$ Always included.
