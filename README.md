@@ -4,24 +4,11 @@
 
 ---
 
-## 📸 Screenshots
+## 📱 Live Demo / Alert Previews
 
-| 💬 Telegram Alert Channel | 🎮 Discord Alert Channel | ⚙️ Precision Scheduler |
-|---|---|---|
-| ![Telegram Alert](Images/Screenshot%202026-06-11%20123138.png) | ![Discord Alert](Images/Screenshot%202026-06-11%20123216.png) | ![Scheduler Alert](Images/Screenshot%202026-06-11%20123536.png) |
-
----
-
-## ⚙️ System Architecture
-
-```mermaid
-graph TD
-    A[Scrapers: YC, GitHub, Internshala, Remotive, etc.] -->|Raw Jobs| B(CS Relevance Filter)
-    B -->|CS-Only Roles| C(Geography Filter)
-    C -->|India/Remote/Global-Top| D{SHA-256 Deduplication}
-    D -->|New Job?| E[Telegram & Discord Notifiers]
-    D -->|Already Seen| F[Discarded/Silent Exit]
-```
+| 💬 Telegram Alert Channel | 🎮 Discord Alert Channel |
+|---|---|
+| ![Telegram Alert](Images/Screenshot%202026-06-11%20123138.png) | ![Discord Alert](Images/Screenshot%202026-06-11%20123216.png) |
 
 ---
 
@@ -75,6 +62,8 @@ Because GitHub Actions built-in schedules can be delayed by hours, we trigger th
    `https://api.github.com/repos/YOUR_USERNAME/Job_Alert/actions/workflows/scrape-morning.yml/dispatches`
 4. Add authorization and content headers along with `{"ref":"main"}` in the request body (refer to the project documentation for step-by-step header configuration).
 
+![Scheduler Setup](Images/Screenshot%202026-06-11%20123536.png)
+
 ---
 
 ## 💻 Local Development & Testing
@@ -118,6 +107,19 @@ Job_Alert/
 ├── Images/                   # Embedded screenshots
 ├── .env.example
 └── package.json
+```
+
+---
+
+## ⚙️ System Architecture
+
+```mermaid
+graph TD
+    A[Scrapers: YC, GitHub, Internshala, Remotive, etc.] -->|Raw Jobs| B(CS Relevance Filter)
+    B -->|CS-Only Roles| C(Geography Filter)
+    C -->|India/Remote/Global-Top| D{SHA-256 Deduplication}
+    D -->|New Job?| E[Telegram & Discord Notifiers]
+    D -->|Already Seen| F[Discarded/Silent Exit]
 ```
 
 ---
