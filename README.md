@@ -1,10 +1,10 @@
-# 🤖 Job Alert Bot — CS Job Hunter for IIIT Kota 2023–27
+# Job Alert Bot — CS Job Hunter for IIIT Kota 2023–27
 
 > Automatically scrapes 9 job platforms twice daily and delivers fresh CS job & internship alerts directly to your **Telegram** and **Discord**, hosted 100% free on GitHub Actions.
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Details |
 |---|---|
@@ -17,16 +17,16 @@
 
 ---
 
-## 📅 Schedule
+## Schedule
 
 | Run | Time (IST) | SerpAPI? | Sources |
 |---|---|---|---|
-| Morning | **9:00 AM** | ✅ Yes (8 queries) | All 9 scrapers |
-| Evening | **9:00 PM** | ❌ No | 8 free scrapers |
+| Morning | **9:00 AM** | Yes (8 queries) | All 9 scrapers |
+| Evening | **9:00 PM** | No | 8 free scrapers |
 
 ---
 
-## 🚀 Setup (5 minutes)
+## Setup (5 minutes)
 
 ### Step 1 — Fork this repo to your GitHub
 
@@ -47,7 +47,7 @@ That's it! The bot will run automatically at 9 AM and 9 PM IST every day.
 
 ---
 
-## 🧪 Local Testing
+## Local Testing
 
 ```bash
 # Clone and install
@@ -71,7 +71,7 @@ npm run start:all
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 job-alert-bot/
@@ -91,16 +91,16 @@ job-alert-bot/
 
 ---
 
-## 🌍 Geographic Rules
+## Geographic Rules
 
-- **India** (any city, remote, hybrid) → ✅ Always included
-- **Global remote** → ✅ Always included  
-- **Global on-site at top companies** (Google, Microsoft, Meta, etc.) → ✅ Included
-- **Random global on-site** → ❌ Skipped
+- **India** (any city, remote, hybrid) → Always included
+- **Global remote** → Always included  
+- **Global on-site at top companies** (Google, Microsoft, Meta, etc.) → Included
+- **Random global on-site** → Skipped
 
 ---
 
-## 📊 Rate Limit Budget
+## Rate Limit Budget
 
 | Service | Limit | Used | Buffer |
 |---|---|---|---|
@@ -111,7 +111,7 @@ job-alert-bot/
 
 ---
 
-## 📝 Notes
+## Notes
 
 - The `data/seen_jobs.json` file is auto-committed by GitHub Actions after each run — this is how deduplication persists across runs
 - Jobs older than 45 days are auto-purged from the DB
