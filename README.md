@@ -1,119 +1,131 @@
-# Job Alert Bot — CS Job Hunter for IIIT Kota 2023–27
+# 🤖 Job Alert Bot — CS Job Hunter
 
-> Automatically scrapes 9 job platforms twice daily and delivers fresh CS job & internship alerts directly to your **Telegram** and **Discord**, hosted 100% free on GitHub Actions.
+> Automatically scrapes **8 major job platforms** twice daily and delivers fresh computer science job & internship alerts directly to **Telegram** and **Discord**. Built on a serverless, database-free architecture hosted 100% free on GitHub Actions.
 
 ---
 
-## Features
+## 📸 Screenshots
+
+| 💬 Telegram Alert Channel | 🎮 Discord Alert Channel | ⚙️ Precision Scheduler |
+|---|---|---|
+| ![Telegram Alert](Images/Screenshot%202026-06-11%20123138.png) | ![Discord Alert](Images/Screenshot%202026-06-11%20123216.png) | ![Scheduler Alert](Images/Screenshot%202026-06-11%20123536.png) |
+
+---
+
+## ⚙️ System Architecture
+
+```mermaid
+graph TD
+    A[Scrapers: YC, GitHub, Internshala, Remotive, etc.] -->|Raw Jobs| B(CS Relevance Filter)
+    B -->|CS-Only Roles| C(Geography Filter)
+    C -->|India/Remote/Global-Top| D{SHA-256 Deduplication}
+    D -->|New Job?| E[Telegram & Discord Notifiers]
+    D -->|Already Seen| F[Discarded/Silent Exit]
+```
+
+---
+
+## ✨ Features
 
 | Feature | Details |
 |---|---|
-| **10 Scrapers** | Internshala, Naukri, Google Jobs, RemoteOK, WeWorkRemotely, YCombinator, GitHub Repos, Freshersworld, Jobicy |
-| **Dual Notifications** | Telegram (rich messages) + Discord (rich embeds) simultaneously |
-| **Smart Filtering** | CS-only roles, experience filter (no 5+ yr roles), geo filter |
-| **Deduplication** | SHA-256 hash DB — never get the same job twice |
-| **Free Hosting** | GitHub Actions cron — zero cost, zero maintenance |
-| **Rate-limit safe** | 240 SerpAPI calls/month, well within all free tiers |
+| **8 Scrapers** | Internshala, SerpAPI (Google Jobs + Naukri targets), RemoteOK, WeWorkRemotely, YCombinator, GitHub Repos, Freshersworld, Remotive |
+| **Dual Notifications** | Multi-channel broadcasting via Telegram (rich messages) and Discord (rich embeds) concurrently |
+| **Smart Filtering** | Scope-restricted classification (ALLOW/BLOCK keywords matching on titles; experience parsing on full text) |
+| **Data Integrity** | SHA-256 indexing with URL query-parameter & tracking-token normalization to eliminate duplication |
+| **Actions Cache DB** | State persisted natively via GitHub Actions Cache — **zero repository commit clutter** (saving 730+ commits/year) |
+| **Optimal Scheduler** | Integrated with `cron-job.org` via GitHub Repository Dispatch API for **100% time-precise** execution |
+| **Fail-Safe Rollback** | Dynamic transaction management; jobs are only marked "seen" if alert delivery succeeds |
 
 ---
 
-## Schedule
+## ⏰ Schedule
 
-| Run | Time (IST) | SerpAPI? | Sources |
+| Run | Time (IST) | SerpAPI? | Sources Scraped |
 |---|---|---|---|
-| Morning | **9:00 AM** | Yes (8 queries) | All 9 scrapers |
-| Evening | **9:00 PM** | No | 8 free scrapers |
+| 🌅 **Morning Scrape** | **9:00 AM** | Yes (8 custom queries) | All 8 scrapers |
+| 🌙 **Evening Scrape** | **9:00 PM** | No | 7 free scrapers |
 
 ---
 
-## Setup (5 minutes)
+## 🛠️ Setup (5 minutes)
 
-### Step 1 — Fork this repo to your GitHub
+### Step 1 — Fork/Clone this repository
 
-### Step 2 — Add GitHub Secrets
-Go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+### Step 2 — Configure GitHub Secrets
+Go to your fork's **Settings → Secrets and variables → Actions → New repository secret** and add:
 
 | Secret Name | Where to get it |
 |---|---|
-| `TELEGRAM_BOT_TOKEN` | Message `@BotFather` on Telegram → `/newbot` |
-| `TELEGRAM_CHAT_ID` | Message your bot, then visit `api.telegram.org/bot<TOKEN>/getUpdates` |
-| `SERPAPI_KEY` | Sign up at [serpapi.com](https://serpapi.com) (250 free/month) |
-| `DISCORD_WEBHOOK_URL` | Server Settings → Integrations → Webhooks → New Webhook |
+| `TELEGRAM_BOT_TOKEN` | Message `@BotFather` on Telegram to create a bot |
+| `TELEGRAM_CHAT_ID` | Message your bot, then check `https://api.telegram.org/bot<TOKEN>/getUpdates` |
+| `SERPAPI_KEY` | Sign up at [serpapi.com](https://serpapi.com) (250 free searches/month) |
+| `DISCORD_WEBHOOK_URL` | Discord Server Settings → Integrations → Webhooks → Create Webhook |
 
-### Step 3 — Test it manually
-Go to **Actions tab → Morning Scrape → Run workflow**
+### Step 3 — Run the Seed Workflow Once
+1. Go to the **Actions** tab of your repository.
+2. Select **🌱 Seed Run (First-Time Setup — Run Once)**.
+3. Click **Run workflow** to catalogue all current listings. This seeds the deduplication database and sends **zero notifications**.
 
-That's it! The bot will run automatically at 9 AM and 9 PM IST every day.
+### Step 4 — Set Up Time-Precise Scheduling
+Because GitHub Actions built-in schedules can be delayed by hours, we trigger the bot at exact minutes via `cron-job.org`:
+1. Generate a GitHub Personal Access Token (PAT) with `workflow` scope at [github.com/settings/tokens](https://github.com/settings/tokens).
+2. Create a free account on [cron-job.org](https://cron-job.org).
+3. Set up two daily POST requests targeting your GitHub workflow dispatch endpoint:
+   `https://api.github.com/repos/YOUR_USERNAME/Job_Alert/actions/workflows/scrape-morning.yml/dispatches`
+4. Add authorization and content headers along with `{"ref":"main"}` in the request body (refer to the project documentation for step-by-step header configuration).
 
 ---
 
-## Local Testing
+## 💻 Local Development & Testing
 
 ```bash
-# Clone and install
-git clone https://github.com/YOUR_USERNAME/job-alert-bot
-cd job-alert-bot
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/Job_Alert.git
+cd Job_Alert
+
+# Install dependencies
 npm install
 
-# Copy env template
+# Setup environment variables
 cp .env.example .env
-# Fill in your credentials in .env
+# Fill in your tokens/keys in .env
 
-# Test run (no messages sent)
+# Run in dry-run mode (scrapes and prints to console; sends no messages)
 npm test
 
-# Full local run
+# Run full scraping cycle locally (sends notifications)
 npm start
-
-# Full run with SerpAPI
-npm run start:all
 ```
 
 ---
 
-## Project Structure
+## 📁 Project Directory Structure
 
-```
-job-alert-bot/
+```text
+Job_Alert/
 ├── .github/workflows/
-│   ├── scrape-morning.yml    # 9 AM IST — full run with SerpAPI
-│   └── scrape-evening.yml    # 9 PM IST — free sources only
+│   ├── scrape-morning.yml    # Morning Run workflow (triggered externally)
+│   ├── scrape-evening.yml    # Evening Run workflow (triggered externally)
+│   └── scrape-seed.yml       # One-time database seed workflow
 ├── src/
-│   ├── scrapers/             # One file per platform
-│   ├── core/                 # DB, filter, geoFilter, formatter
-│   ├── notifiers/            # telegram.js, discord.js
-│   └── main.js               # Entry point
+│   ├── scrapers/             # Scrapers for each job board
+│   ├── core/                 # Database, relevance filter, and formatting engine
+│   ├── notifiers/            # Telegram and Discord notification connectors
+│   └── main.js               # Main execution orchestrator
 ├── data/
-│   └── seen_jobs.json        # Deduplication DB (auto-committed by Actions)
+│   └── seen_jobs.json        # Local test database (git-ignored)
+├── Images/                   # Embedded screenshots
 ├── .env.example
 └── package.json
 ```
 
 ---
 
-## Geographic Rules
+## 📋 Scraper Matching & Geographic Rules
 
-- **India** (any city, remote, hybrid) → Always included
-- **Global remote** → Always included  
-- **Global on-site at top companies** (Google, Microsoft, Meta, etc.) → Included
-- **Random global on-site** → Skipped
-
----
-
-## Rate Limit Budget
-
-| Service | Limit | Used | Buffer |
-|---|---|---|---|
-| SerpAPI | 250/month | ~240/month | 10 |
-| GitHub Actions | 2,000 min/month | ~90 min/month | 1,910 min |
-| Telegram | 1 msg/sec | ~0.6 msg/sec | Safe |
-| Discord | ~30 msg/min | ~1 msg/2s | Safe |
-
----
-
-## Notes
-
-- The `data/seen_jobs.json` file is auto-committed by GitHub Actions after each run — this is how deduplication persists across runs
-- Jobs older than 45 days are auto-purged from the DB
-- Max 30 job notifications per run to prevent spam
-- India jobs are shown first, then remote, then global
+* **India** (all cities, Remote, and Work From Home) $\rightarrow$ Always included.
+* **Global Remote** $\rightarrow$ Always included.
+* **Global On-Site** $\rightarrow$ Only included if the employer is a Tier-1 tech company (e.g., Google, Microsoft, Meta, Amazon).
+* **Old Jobs Purge:** Scraped jobs are automatically expired from the database cache after 45 days to keep it lightweight.
+* **Rate Limits:** The bot consumes exactly **240 SerpAPI search credits/month**, safely under the 250 free limit.
