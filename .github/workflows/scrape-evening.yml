@@ -49,13 +49,15 @@ jobs:
           restore-keys: |
             seen-jobs-db-
 
-      - name: 🤖 Run job scraper (Free Sources Only — no SerpAPI)
+      - name: 🤖 Run job scraper (Free Sources Only — no SerpAPI, no LLM)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           USE_SERPAPI: 'false'
+          USE_LLM: 'false'
           DRY_RUN: 'false'
         run: node src/main.js
 

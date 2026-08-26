@@ -62,8 +62,11 @@ function formatTelegram(job) {
     `🏢 ${company}\n` +
     `📍 ${location} ${escapeMdV2(geoTag)}\n` +
     `🏷 ${type} • ${sourceEmoji} ${source}` +
+    `${job.matchScore != null ? `\n📊 Match: ${escapeMdV2(String(job.matchScore))}%` : ''}` +
+    `${job.aiReason ? `\n💡 ${escapeMdV2(job.aiReason)}` : ''}` +
     `${salary}` +
     `${posted}\n` +
+    `${job.coldPitch && job.matchScore >= 80 ? `\n✉️ _${escapeMdV2(job.coldPitch)}_\n` : ''}` +
     `\n🔗 [Apply Now →](${url})`
   );
 }
@@ -104,6 +107,15 @@ function formatDiscordEmbed(job) {
   }
   if (job.postedAt) {
     fields.push({ name: '⏱ Posted', value: job.postedAt, inline: true });
+  }
+  if (job.matchScore != null) {
+    fields.push({ name: '📊 Match Score', value: `${job.matchScore}%`, inline: true });
+  }
+  if (job.aiReason) {
+    fields.push({ name: '💡 AI Insight', value: job.aiReason.slice(0, 1024), inline: false });
+  }
+  if (job.coldPitch && job.matchScore >= 80) {
+    fields.push({ name: '✉️ Cold Pitch', value: job.coldPitch.slice(0, 1024), inline: false });
   }
 
   return {

@@ -1,0 +1,18 @@
+{
+  "name": "Ansh Somani",
+  "education": "B.Tech Computer Science, IIIT Kota (2023-2027)",
+  "coreStack": [
+    "Node.js", "Express.js", "JavaScript (ES6+)", "MongoDB", "React.js",
+    "REST APIs", "Git", "GitHub Actions", "Cheerio", "Axios"
+  ],
+  "interests": [
+    "Backend Engineering", "System Design", "Distributed Systems",
+    "Data Pipelines", "Serverless Architecture"
+  ],
+  "targetRoles": [
+    "Backend Engineer Intern", "SDE Intern", "Software Developer Intern",
+    "Software Engineer Intern", "Full Stack Developer Intern"
+  ],
+  "targetLocations": ["India", "Remote", "Work From Home"],
+  "experienceLevel": "Fresher / 0-1 years / New Grad / Entry Level"
+}

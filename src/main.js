@@ -5,6 +5,7 @@ require('dotenv').config();
 const { runAllScrapers } = require('./scrapers/index');
 const { filterJobs } = require('./core/filter');
 const { passesGeoFilter, isIndia } = require('./core/geoFilter');
+const { evaluateJobs } = require('./core/llmEvaluator');
 const Database = require('./core/database');
 const TelegramNotifier = require('./notifiers/telegram');
 const DiscordNotifier = require('./notifiers/discord');
@@ -15,6 +16,7 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 const USE_SERPAPI = process.env.USE_SERPAPI === 'true';
 const DRY_RUN = process.env.DRY_RUN === 'true' || process.argv.includes('--dry-run');
+const USE_LLM = process.env.USE_LLM === 'true';
 
 // SEED_MODE: On first deploy, run with SEED_MODE=true.
 // This scrapes all current job listings, marks them ALL as "already seen"
@@ -48,6 +50,12 @@ function validateConfig() {
  */
 function sortJobs(jobs) {
   return jobs.sort((a, b) => {
+    // If LLM scores exist, highest match first
+    if (a.matchScore != null && b.matchScore != null) {
+      const scoreDiff = b.matchScore - a.matchScore;
+      if (scoreDiff !== 0) return scoreDiff;
+    }
+    // Then by geography: India → Remote → Global
     const geoScore = j => {
       const loc = (j.location || '').toLowerCase();
       if (isIndia(loc)) return 0;
@@ -71,6 +79,7 @@ async function main() {
     console.log('  🌱 SEED MODE: Cataloguing all existing jobs — NO notifications will be sent.');
     console.log('  After this run, set SEED_MODE=false in your workflow for live alerts.');
   }
+  console.log(`  LLM Eval: ${USE_LLM ? 'YES (Gemini 1.5 Flash)' : 'OFF'}`);
   console.log('═'.repeat(60) + '\n');
 
   validateConfig();
@@ -86,11 +95,20 @@ async function main() {
   const geoJobs = csJobs.filter(passesGeoFilter);
   console.log(`🌍 After geo filter: ${geoJobs.length} jobs`);
 
+  // ── 3.5. LLM Evaluation (optional) ────────────────────────────────────
+  let evaluatedJobs = geoJobs;
+  if (USE_LLM && !SEED_MODE) {
+    console.log(`\n🧠 Running LLM evaluation on ${geoJobs.length} jobs...`);
+    evaluatedJobs = await evaluateJobs(geoJobs);
+    const scored = evaluatedJobs.filter(j => j.matchScore != null);
+    console.log(`🧠 LLM scored ${scored.length}/${evaluatedJobs.length} jobs`);
+  }
+
   // ── 4. Deduplicate against DB ────────────────────────────────────────────
   const db = new Database();
   db.cleanup();
 
-  const newJobs = geoJobs.filter(job => db.isNew(job));
+  const newJobs = evaluatedJobs.filter(job => db.isNew(job));
   console.log(`✨ New (not previously seen): ${newJobs.length} jobs`);
 
   // FIX Issue 5: If nothing new, exit silently — no "nothing happened" ping
